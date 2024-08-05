@@ -9,6 +9,7 @@ export default function Home() {
   const [inventory, setInventory] = useState([])
   const [open, setOpen] = useState(false)
   const [itemName, setItemName] = useState('')
+  const [searchTerm, setSearchTerm] = useState('');
 
   const updateInventory = async () => {
     const snapshot = query(collection(firestore, 'inventory'))
@@ -58,6 +59,10 @@ export default function Home() {
   const handleOpen = () => setOpen(true)
   const handleClose = () => setOpen(false)
 
+  const filteredInventory = inventory.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <Box width="100vw" height="100vh" display="flex" flexDirection="column" justifyContent="center" alignItems="center" gap={2}>
       <Modal open={open} onClose={handleClose}>
@@ -98,10 +103,15 @@ export default function Home() {
           </Stack>
         </Box>
       </Modal>
-      <Button variant="contained" onClick={() => {
-        handleOpen()
-      }}
-      >
+      <TextField
+        variant="outlined"
+        fullWidth
+        placeholder="Search items..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        sx={{ maxWidth: '800px', mb: 2 }}
+      />
+      <Button variant="contained" onClick={handleOpen}>
         Add New Item
       </Button>
       <Box border="1px solid #333">
@@ -112,14 +122,14 @@ export default function Home() {
         </Box>
         <Stack width="800px" height="300px" spacing={2} overflow="auto">
           {
-            inventory.map(({ name, quantity }) => (
+            filteredInventory.map(({ name, quantity }) => (
               <Box 
                 key={name} width="100%"
                 minheight="150px"
                 display="flex"
                 alignItems="center" 
                 justifyContent="space-between"
-                bgcolor='#f0f0f0'
+                bgcolor={name.toLowerCase() === searchTerm.toLowerCase() ? '#FFFF00' : '#f0f0f0'}
                 padding={5}
               >
                 <Typography variant="h3" color='#333' textAlign="center">
