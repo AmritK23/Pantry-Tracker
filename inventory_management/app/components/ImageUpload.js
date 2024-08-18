@@ -3,12 +3,14 @@ import { useRef, useState } from 'react'
 import { Widget } from '@uploadcare/react-widget'
 import { Button } from '@mui/material'
 
-export default function ImageUpload() {
+export default function ImageUpload({ onUpload }) {
   const [imageUrl, setImageUrl] = useState(null)
   const widgetRef = useRef()
 
   const handleUpload = (fileInfo) => {
-    setImageUrl(fileInfo.cdnUrl)
+    const url = fileInfo.cdnUrl;
+    setImageUrl(url);
+    onUpload(url); // Pass the URL to the parent component
   }
 
   const handleTakePicture = () => {
@@ -22,7 +24,7 @@ export default function ImageUpload() {
       </Button>
       <Widget
         ref={widgetRef}
-        publicKey="YOUR_UPLOADCARE_PUBLIC_KEY"
+        publicKey="2f762a0f0271aa8d53a2"
         onChange={handleUpload}
         imagesOnly
         previewStep
