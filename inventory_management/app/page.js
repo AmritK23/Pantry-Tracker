@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react';
 import { firestore } from '@/firebase'
 import { Box, Modal, Typography, Stack, TextField, Button } from '@mui/material'
 import { collection, deleteDoc, doc, getDocs, query, getDoc, setDoc } from 'firebase/firestore'
+import ImageUpload from '@/app/components/ImageUpload'
+import ObjectDetection from '@/app/components/ObjectDetection' // Import the ObjectDetection component
 
 export default function Home() {
   const [inventory, setInventory] = useState([])
   const [open, setOpen] = useState(false)
   const [itemName, setItemName] = useState('')
   const [searchTerm, setSearchTerm] = useState('');
+  const [imageUrl, setImageUrl] = useState(''); // State to store image URL
+  const [detectedItem, setDetectedItem] = useState(''); // State to store detected item
 
   const updateInventory = async () => {
     const snapshot = query(collection(firestore, 'inventory'))
@@ -39,15 +43,17 @@ export default function Home() {
     }
   }
 
-  const addItem = async (item) => {
+  const addItem = async (item, imageUrl) => {
+    if (!item) return; // Prevent empty item names
+    if (!imageUrl) return; // Prevent undefined imageUrl
     const docRef = doc(collection(firestore, 'inventory'), item)
     const docSnap = await getDoc(docRef)
 
     if (docSnap.exists()) {
       const { quantity } = docSnap.data()
-      await setDoc(docRef, { quantity: quantity + 1 })
+      await setDoc(docRef, { quantity: quantity + 1, imageUrl }) // Add imageUrl to the document
     } else {
-      await setDoc(docRef, { quantity: 1 })
+      await setDoc(docRef, { quantity: 1, imageUrl }) // Add imageUrl to the document
     }
     updateInventory()
   }
@@ -58,6 +64,21 @@ export default function Home() {
 
   const handleOpen = () => setOpen(true)
   const handleClose = () => setOpen(false)
+
+  const handleDetection = (predictions) => {
+    if (predictions.length > 0) {
+      const detectedClass = predictions[0].class.toLowerCase(); // Get the class of the first detected object
+      setDetectedItem(detectedClass);
+      const existingItem = inventory.find(item => item.name.toLowerCase() === detectedClass);
+      if (existingItem) {
+        addItem(detectedClass, existingItem.imageUrl); // Increment count if item exists
+      } else {
+        addItem(detectedClass, imageUrl); // Add new entry if item does not exist
+      }
+    } else {
+      setDetectedItem('');
+    }
+  };
 
   const filteredInventory = inventory.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -73,9 +94,7 @@ export default function Home() {
           border="2px solid #000"
           boxShadow={24}
           p={4}
-          display="flex"
-          flexDirection="column"
-          gap={3}
+          display="flex" flexDirection="column" gap={3}
           sx={{
             transform: 'translate(-50%, -50%)',
           }}
@@ -93,7 +112,7 @@ export default function Home() {
             <Button 
               variant="outlined" 
               onClick={() => {
-                addItem(itemName)
+                addItem(itemName, imageUrl)
                 setItemName('')
                 handleClose()
               }}
@@ -101,6 +120,9 @@ export default function Home() {
               Add
             </Button>
           </Stack>
+          <ImageUpload onUpload={setImageUrl} /> {/* Add ImageUpload component */}
+          {imageUrl && <ObjectDetection imageUrl={imageUrl} onDetect={handleDetection} />} {/* Add ObjectDetection component */}
+          {detectedItem && <Typography variant="h6">Detected: {detectedItem}</Typography>}
         </Box>
       </Modal>
       <TextField
@@ -122,7 +144,7 @@ export default function Home() {
         </Box>
         <Stack width="800px" height="300px" spacing={2} overflow="auto">
           {
-            filteredInventory.map(({ name, quantity }) => (
+            filteredInventory.map(({ name, quantity, imageUrl }) => ( // Include imageUrl in map
               <Box 
                 key={name} width="100%"
                 minheight="150px"
@@ -138,9 +160,10 @@ export default function Home() {
                 <Typography variant="h3" color='#333' textAlign="center">
                   {quantity}
                 </Typography>
+                {imageUrl && <img src={imageUrl} alt={name} style={{ maxWidth: '100px', marginLeft: '10px' }} />} {/* Display image */}
                 <Stack direction="row" spacing={2}>
                   <Button variant="contained" onClick={() => {
-                    addItem(name)
+                    addItem(name, imageUrl)
                   }}
                   >
                     Add
